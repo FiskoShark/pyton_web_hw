@@ -1,0 +1,90 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===== Віртуальні середовища =====
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# ===== Змінні оточення / секрети =====
+.env
+.env.*
+!.env.example
+*.env
+secrets.json
+*.pem
+
+# ===== Django =====
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+/media/
+/staticfiles/
+/static_root/
+# якщо статика збирається в static/ — розкоментуйте:
+# /static/
+
+# ===== Flask / FastAPI =====
+instance/
+.webassets-cache
+.cache/
+
+# ===== Тестування / покриття =====
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.hypothesis/
+*.cover
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== IDE / редактори =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Логи та тимчасові =====
+*.log
+logs/
+tmp/
+temp/
