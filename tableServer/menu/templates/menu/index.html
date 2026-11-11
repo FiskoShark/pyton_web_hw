@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Бронювання столиків</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+        padding-top: 2rem;
+      }
+      .card {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 class="mb-4 text-center">🍽️ Бронювання столиків</h2>
+
+      <!-- блок авторизації -->
+      <div id="auth-section" class="card p-4 mb-4" style="display: none">
+        <h5>Вхід / Реєстрація</h5>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <input
+              type="text"
+              id="username"
+              class="form-control"
+              placeholder="Логін"
+            />
+          </div>
+          <div class="col-md-4">
+            <input
+              type="password"
+              id="password"
+              class="form-control"
+              placeholder="Пароль"
+            />
+          </div>
+          <div class="col-md-4">
+            <button class="btn btn-primary w-100" onclick="login()">
+              Увійти
+            </button>
+          </div>
+        </div>
+        <small class="text-muted mt-2 d-block"
+          >Немає акаунту?
+          <a href="#" onclick="register()">Зареєструватися</a></small
+        >
+      </div>
+
+      <!-- головний блок (видно тільки після логіну) -->
+      <div id="main-section" style="display: none">
+        <div class="d-flex justify-content-between mb-3">
+          <h5>Вітаємо, <span id="current-user"></span>!</h5>
+          <button class="btn btn-outline-danger btn-sm" onclick="logout()">
+            Вийти
+          </button>
+        </div>
+
+        <!-- форма створення бронювання -->
+        <div class="card p-4 mb-4">
+          <h5>Створити бронювання</h5>
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label>Столик</label>
+              <select id="table-select" class="form-select"></select>
+            </div>
+            <div class="col-md-3">
+              <label>Дата</label>
+              <input type="date" id="date" class="form-control" />
+            </div>
+            <div class="col-md-3">
+              <label>Час</label>
+              <input type="time" id="time" class="form-control" />
+            </div>
+            <div class="col-md-2">
+              <label>Гостей</label>
+              <input
+                type="number"
+                id="guests"
+                class="form-control"
+                value="2"
+                min="1"
+              />
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+              <button
+                class="btn btn-success w-100"
+                onclick="createReservation()"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div id="message" class="mt-3"></div>
+        </div>
+
+        <!-- список бронювань -->
+        <div class="card p-4">
+          <h5>Мої бронювання</h5>
+          <ul
+            id="reservation-list"
+            class="list-group list-group-flush mt-3"
+          ></ul>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = "/api";
+      let token = localStorage.getItem("access_token");
+
+      // --- АВТОРИЗАЦІЯ ---
+      function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        fetch(`${API_URL}/token/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.access) {
+              localStorage.setItem("access_token", data.access);
+              localStorage.setItem("username", username);
+              token = data.access;
+              checkAuth();
+            } else {
+              alert("Помилка входу: " + JSON.stringify(data));
+            }
+          });
+      }
+
+      function register() {
+        const username = prompt("Введіть новий логін:");
+        const password = prompt("Введіть пароль:");
+        if (!username || !password) return;
+        fetch(`${API_URL}/register/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        }).then(() => alert("Зареєстровано! Тепер увійдіть."));
+      }
+
+      function logout() {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("username");
+        token = null;
+        checkAuth();
+      }
+
+      // --- БРОНЮВАННЯ ---
+      function loadTables() {
+        fetch(`${API_URL}/tables/`)
+          .then((res) => res.json())
+          .then((tables) => {
+            const select = document.getElementById("table-select");
+            select.innerHTML = "";
+            tables.forEach((t) => {
+              select.innerHTML += `<option value="${t.id}">Столик ${t.number} (${t.seats} місць)</option>`;
+            });
+          });
+      }
+
+      function loadReservations() {
+        fetch(`${API_URL}/reservations/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            const list = document.getElementById("reservation-list");
+            list.innerHTML = "";
+            if (data.length === 0) {
+              list.innerHTML =
+                '<li class="list-group-item text-muted">Немає бронювань</li>';
+            }
+            data.forEach((r) => {
+              let statusBadge =
+                r.status === "pending"
+                  ? "bg-warning text-dark"
+                  : r.status === "confirmed"
+                    ? "bg-success"
+                    : "bg-secondary";
+              list.innerHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            Столик #${r.table} | ${r.date} о ${r.time} | ${r.guests_count} гостей
+                            <span class="badge ${statusBadge} ms-2">${r.status}</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="cancelReservation(${r.id})">Скасувати</button>
+                    </li>
+                `;
+            });
+          });
+      }
+
+      function createReservation() {
+        const table = document.getElementById("table-select").value;
+        const date = document.getElementById("date").value;
+        const time = document.getElementById("time").value;
+        const guests = document.getElementById("guests").value;
+
+        fetch(`${API_URL}/reservations/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            table: parseInt(table),
+            date: date,
+            time: time + ":00",
+            guests_count: parseInt(guests),
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            const msg = document.getElementById("message");
+            if (data.id) {
+              msg.innerHTML =
+                '<div class="alert alert-success">Бронювання створено!</div>';
+              loadReservations();
+            } else {
+              msg.innerHTML = `<div class="alert alert-danger">Помилка: ${JSON.stringify(data)}</div>`;
+            }
+            setTimeout(() => (msg.innerHTML = ""), 4000);
+          });
+      }
+
+      function cancelReservation(id) {
+        if (!confirm("Скасувати бронювання?")) return;
+        fetch(`${API_URL}/reservations/${id}/cancel/`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(() => loadReservations());
+      }
+
+      // --- ПЕРЕВІРКА СТАНУ ---
+      function checkAuth() {
+        if (token) {
+          document.getElementById("auth-section").style.display = "none";
+          document.getElementById("main-section").style.display = "block";
+          document.getElementById("current-user").innerText =
+            localStorage.getItem("username");
+          loadTables();
+          loadReservations();
+        } else {
+          document.getElementById("auth-section").style.display = "block";
+          document.getElementById("main-section").style.display = "none";
+        }
+      }
+
+      checkAuth();
+    </script>
+  </body>
+</html>
